@@ -75,13 +75,13 @@ def create_data_model(optimize, totalFleet):
 def main():
 
     # Reads from csv files
-    products = pd.read_csv("../data/olist_products_dataset.csv")
+    products = pd.read_csv("./data/olist_products_dataset.csv")
     products = products.set_index("product_id")
-    customers = pd.read_csv("../data/olist_customers_dataset.csv")
+    customers = pd.read_csv("./data/olist_customers_dataset.csv")
     customers = customers.set_index("customer_id")
-    orders = pd.read_csv("../data/olist_orders_dataset.csv")
+    orders = pd.read_csv("./data/olist_orders_dataset.csv")
     orders = orders.set_index("order_id")    
-    order_items = pd.read_csv("../data/olist_order_items_dataset.csv")
+    order_items = pd.read_csv("./data/olist_order_items_dataset.csv")
     order_items = order_items.set_index("order_id")
 
     # Queries the datasets
@@ -141,15 +141,26 @@ def main():
             sum(x[(i, j)] * data['volumes'][i]
                 for i in data['items']) <= data['max_volume'][j])
 
+            
+    
+     # Adicionando variáveis binárias para o uso de veículos
+    y = {}
+    for j in data['trucks']:
+        y[j] = solver.IntVar(0, 1, 'y_%i' % j)
 
-    # Add objectives
+    # Modificar a função objetivo
     objective = solver.Objective()
+    penalidade_por_veiculo = 10000  # Ajuste este valor conforme necessário
 
     for i in data['items']:
-        # print(f"{i} in {len(data['items'])}")
         for j in data['trucks']:
-            # print(f"{j} in {len(data['trucks'])}")
             objective.SetCoefficient(x[(i, j)], data['volumes'][i])
+            # Agora a penalidade é aplicada com base no uso do veículo
+            objective.SetCoefficient(y[j], -penalidade_por_veiculo)
+
+    # Restrições para vincular x[i, j] e y[j]
+    for j in data['trucks']:
+        solver.Add(sum(x[i, j] for i in data['items']) <= data['num_items'] * y[j])
 
     print('-----------------------first stage done-----------------------')
     objective.SetMaximization()
