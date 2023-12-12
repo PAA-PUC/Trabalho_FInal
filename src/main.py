@@ -38,12 +38,14 @@ def get_fleet():
 
 # create data model for knapsack problem 
 # paramter optimize are data to be packing into the available vehicle in totalFleet
-def create_data_model(optimize, totalFleet):
+def create_data_model(products, totalFleet):
     """Create the data for the example."""
     data = {}
-    weights = optimize['product_weight_g'].to_list()
-    volumes = optimize['product_volume_cm3'].to_list()
+    ids = products['product_id'].to_list()
+    weights = products['product_weight_g'].to_list()
+    volumes = products['product_volume_cm3'].to_list()
     
+    data['ids'] = ids
     data['weights'] = weights
     data['volumes'] = volumes
     
@@ -75,29 +77,29 @@ def create_data_model(optimize, totalFleet):
 def main():
 
     # Reads from csv files
-    products = pd.read_csv("./data/olist_products_dataset.csv")
+    products = pd.read_csv("../data/olist_products_dataset.csv")
     products = products.set_index("product_id")
-    customers = pd.read_csv("./data/olist_customers_dataset.csv")
+    customers = pd.read_csv("../data/olist_customers_dataset.csv")
     customers = customers.set_index("customer_id")
-    orders = pd.read_csv("./data/olist_orders_dataset.csv")
+    orders = pd.read_csv("../data/olist_orders_dataset.csv")
     orders = orders.set_index("order_id")    
-    order_items = pd.read_csv("./data/olist_order_items_dataset.csv")
+    order_items = pd.read_csv("../data/olist_order_items_dataset.csv")
     order_items = order_items.set_index("order_id")
 
     # Queries the datasets
     sql_query = "SELECT orders.order_id, customers.customer_id FROM orders INNER JOIN customers ON orders.customer_id = customers.customer_id"
     cust_order = pdsql.sqldf(sql_query, locals())
-    print(cust_order)
+    # print(cust_order)
     
     sql_query = "SELECT order_items.product_id FROM order_items JOIN cust_order ON order_items.order_id = cust_order.order_id"
     cust_order_items = pdsql.sqldf(sql_query, locals())
     
-    print(cust_order_items)
+    # print(cust_order_items)
 
-    sql_query = "SELECT products.* FROM cust_order_items JOIN products ON products.product_id = cust_order_items.product_id WHERE products.product_weight_g>=20000"
+    sql_query = "SELECT products.* FROM cust_order_items JOIN products ON products.product_id = cust_order_items.product_id WHERE products.product_weight_g>=2000"
     total_items = pdsql.sqldf(sql_query, locals())
     total_items['product_volume_cm3'] = total_items['product_width_cm'] * total_items['product_height_cm'] * total_items['product_length_cm']
-    print(total_items)
+    # print(total_items)
 
     
     # Calculate the total weight and total volume of all items
@@ -162,7 +164,6 @@ def main():
     for j in data['trucks']:
         solver.Add(sum(x[i, j] for i in data['items']) <= data['num_items'] * y[j])
 
-    print('-----------------------first stage done-----------------------')
     objective.SetMaximization()
 
 
@@ -187,7 +188,7 @@ def main():
                 if x[i, j].solution_value() > 0:
                     assign.append(i)
                     total_items += 1
-                    print('>> Item', i, '- weight:', data['weights'][i],
+                    print(f'>> Item[{i}]:', data['ids'][i], '- weight:', data['weights'][i],
                         ' volumes:', data['volumes'][i])
                     bin_weight += data['weights'][i]
                     bin_volume += data['volumes'][i]
